@@ -10,25 +10,32 @@ INBOX = BASE / "inbox"
 INBOX.mkdir(parents=True, exist_ok=True)
 
 LAST_PNG = INBOX / "last_input.png"
-LAST_NPY  = INBOX / "last_input.npy"
-MANIFEST  = INBOX / "manifest.json"   # {"ts": 1730000000}
+LAST_NPY = INBOX / "last_input.npy"
+MANIFEST = INBOX / "manifest.json"   # {"ts": 1730000000}
+
+
+def _extract_image_from_editor(img):
+    """
+    Gradio ImageEditor는 dict 형태로 오기도 함: {composite | image | layers}
+    """
+    if isinstance(img, dict):
+        if img.get("composite") is not None:
+            return img["composite"]
+        if img.get("image") is not None:
+            return img["image"]
+        layers = img.get("layers")
+        if isinstance(layers, (list, tuple)) and len(layers) > 0:
+            return layers[-1]
+        return None
+    return img
+
 
 def _preprocess_to_28x28(img):
-    # Gradio ImageEditor는 dict로 올 수 있음: {composite | image | layers}
-    if isinstance(img, dict):
-        if "composite" in img and img["composite"] is not None:
-            img = img["composite"]
-        elif "image" in img and img["image"] is not None:
-            img = img["image"]
-        elif "layers" in img and isinstance(img["layers"], (list, tuple)) and len(img["layers"]) > 0:
-            img = img["layers"][-1]
-        else:
-            img = None
-
+    img = _extract_image_from_editor(img)
     if img is None:
         return None
 
-    # 이하 동일 (그레이스케일 → 반전 → 이진화 → 바운딩박스 → 28×28 배치)
+    # RGB -> Gray(0~1) -> 반전 -> 이진 -> bbox -> 28x28
     g = (img[..., :3].mean(axis=-1) / 255.0).astype("float32")
     g = 1.0 - g
     g = (g > 0.5).astype("float32")
@@ -54,14 +61,14 @@ def save_and_send(img):
     MANIFEST.write_text(json.dumps({"ts": int(time.time())}))
     return "✅ 전송됨"
 
+
 def build_sender_blocks():
-    print("[sender_app] build_sender_blocks loaded")  # shows in server console
+    print("[sender_app] build_sender_blocks loaded")
     with gr.Blocks(title="Sender") as app:
-        gr.Markdown("## Sender\nDraw a digit and click **Send**. Receiver will auto-refresh.")
+        gr.Markdown("## Sender\n숫자를 그리고 **Send**를 누르세요. Receiver가 자동으로 보여줍니다.")
         draw = gr.ImageEditor(type="numpy", label="Draw here", height=420, width=420)
         send_btn = gr.Button("Send", variant="primary")
         status = gr.Markdown("")
-        # instant feedback -> then save
         send_btn.click(lambda: "📤 sending…", None, status, show_progress=False, queue=False)\
                 .then(save_and_send, inputs=draw, outputs=status, show_progress=False, queue=False)
     return app

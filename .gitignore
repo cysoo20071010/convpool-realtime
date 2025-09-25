@@ -1,9 +1,14 @@
-﻿__pycache__/
+﻿# venv / 캐시
 .venv/
+__pycache__/
 *.pyc
-*.pyo
-*.pyd
-*.log
-.env
-dist/
-build/
+
+# 런타임 산출물
+inbox/
+*.mp4
+*.gif
+*.avi
+*.webm
+
+# gradio/temp
+gradio_cached_examples/
