@@ -1,0 +1,7 @@
+﻿fastapi>=0.112
+uvicorn[standard]>=0.30
+gradio>=4.29
+opencv-python-headless>=4.9
+numpy>=1.26
+matplotlib>=3.8
+tensorflow-cpu>=2.15
